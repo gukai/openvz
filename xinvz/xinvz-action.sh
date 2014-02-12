@@ -1,25 +1,70 @@
 #!/bin/sh
 . ./xinvz-vzctlerr.sh
 
+#for start CT.
+trap 'str_scu_info' USR1
+STR_TIMEOUT=2
+CHLD_SLP=10   #for test
+
+usage(){
+    echo './xinvz-action --command <start | usage> --ctid <ctid>'
+}
+
+
+str_scu_info(){
+    echo "SUCCESS"
+    exit
+}
+
+str_err_exit(){
+    exit
+}
+
 startvm(){
     if [ -z ${CTID} ];then
         echo "ERROR"
         echo "the ctid must be specified when this script try to start vm."
     fi
+    startvm_pro &
+    local childpid=$!
 
+    #for save the signal, must not sleep too much time once.
+    #sleep $STR_TIMEOUT
+    local i=0
+    while [ $i -le $STR_TIMEOUT ] ; do
+        i=`expr $i + 1`
+        sleep 1
+    done
+
+    kill -9 $childpid
+    echo "ERROR"
+    echo "vm power or filesystem boot  timeout"
+}
+
+startvm_pro(){
     vzctl start ${CTID} >/dev/null 2>&1
     local ret=$?
     
     if [ $ret == 0 -o $ret == 32 ];then
-        if system_online_delay;then
-            echo "SUCCESS"
-        else
-            echo "ERROR"
-            echo "VM Power is on, system boot up timeout."
-        fi
+       # if system_online_delay;then
+       #     echo "SUCCESS"
+       # else
+       #     echo "ERROR"
+       #     echo "VM Power is on, system boot up timeout."
+       # fi
+        while ! system_online; do
+            sleep 1
+        done
+        
+        #for test
+        sleep $CHLD_SLP
+        #echo "send USR1 signal"
+        eval kill -10 $$
+        exit
     else
         echo "ERROR"
-	eval echo "Error num " $erro ": "\${xinvzerr$ret}
+	eval echo "Error num " $ret ": "\${xinvzerr$ret}
+        kill -9 $$ >/dev/null 2>&1
     fi
 
 }
@@ -46,6 +91,7 @@ system_online_delay(){
        return 0
     fi
 }
+
 
 
 
