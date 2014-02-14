@@ -6,32 +6,39 @@ usage-usage(){
 }
 
 add_network(){
-    checketh=`ls /etc/sysconfig/network-scripts/ifcfg-${DEVNAME} 2>/dev/null`
-    if [ -z "$checketh" ]
-    then
+    checketh=`vzctl exec $CTID ls /etc/sysconfig/network-scripts/ifcfg-${DEVNAME} 2>/dev/null`
+    #echo $checketh
+    if [ -z "$checketh" ];then
+        echo "ERROR"
         echo "No Physical Interface ${DEVNAME} configuration file found! Exiting...!"
         exit 3;
     else
-        max=`ls /etc/sysconfig/network-scripts/ |grep ${DEVNAME} |awk -F: '{print $2}'|sort -n |tail -1`
-        if [ "$max" == "" ]
-        then
+        max=`vzctl exec $CTID ls /etc/sysconfig/network-scripts/ |grep ${DEVNAME} |awk -F: '{print $2}'|sort -n |tail -1`
+        #echo "max is " $max
+        if [ "$max" == "" ];then
             id=0
         else
             id=$[$max+1]
         fi
-        echo "DEVICE=${DEVNAME}:${id}
-              ONBOOT=yes
-              BOTOPROTO=no
-              IPADDR=${IPADDR}
-              NETMASK=${NETMASK} ">/etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id
-              ifup $DEVNAME:$id
+        config="DEVICE=${DEVNAME}:${id} ONBOOT=yes BOTOPROTO=no IPADDR=${IPADDR} NETMASK=${NETMASK}"
+        echo $config
+        echo "ifcfg-${DEVNAME}:$id"
+        echo "$config > /etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id"
+
+        vzctl exec $CTID "echo $config > /etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id"
+        #vzctl exec $CTID echo "DEVICE=${DEVNAME}:${id}
+        #      ONBOOT=yes
+        #      BOTOPROTO=no
+        #      IPADDR=${IPADDR}
+        #      NETMASK=${NETMASK} ">/etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id
+        vzctl exec $CTID ifup $DEVNAME:$id
     fi
 
     echo "$?"
 }
 
 
-TEMP=`getopt -o d:i:n: --long devname:,ipaddr:,netmask: \
+TEMP=`getopt -o c:d:i:n: --long ctid:,devname:,ipaddr:,netmask: \
      -n 'ERROR' -- "$@"`
 
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
@@ -40,6 +47,7 @@ eval set -- "$TEMP"
 
 while true ; do
         case "$1" in
+                -c|--ctid) CTID=$2; shift 2 ;;
                 -d|--devname) DEVNAME=$2 ; shift 2 ;;
                 -i|--ipaddr) IPADDR=$2 ; shift 2 ;;
                 -n|--netmask) NETMASK=$2 ; shift 2 ;;
@@ -63,5 +71,16 @@ if [ -z ${NETMASK} ];then
     echo "Parameter netmask must be set."
     exit 1
 fi
+if [ -z ${CTID} ];then
+    echo "ERROR"
+    echo "Parameter ctid must be set."
+    exit 1
+fi
+
+#test
+#echo "DEVNAME is " $DEVNAME
+#echo "CTID is " $CTID
+#echo "IPADDR is " $IPADDR
+#echo "NETMASK is " $NETMASK
 
 add_network
