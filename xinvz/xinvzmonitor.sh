@@ -1,5 +1,5 @@
 #!/bin/sh
-PUUSAGE=0%
+PUUSAGE=0
 TX_BYTES=0
 RX_BYTES=0
 DISK_READ=0
@@ -28,7 +28,7 @@ cpu_used(){
        if [ $i -eq 15 ]; then id=$c; fi
     done
 
-    CPUUSAGE=`expr 100 - $id`%
+    CPUUSAGE=`expr 100 - $id`
 }
 
 net_flux(){
@@ -54,18 +54,20 @@ mom_one(){
 
     if ! is_online; then
         #Must rest here, mom_all will call it muti times.
-        CPUUSAGE=0%
+        CPUUSAGE=0
         TX_BYTES=0
         RX_BYTES=0
         DISK_READ=0
         DISK_WRITE=0
-        echo -e ${CTID}"\t" ${CPUUSAGE}"\t" ${RX_BYTES}"\t" ${TX_BYTES}"\t"
+        #echo -e ${CTID}"\t" ${CPUUSAGE}"\t" ${RX_BYTES}"\t" ${TX_BYTES}"\t"
+        echo -ne ${CTID}" "${CPUUSAGE}" "${RX_BYTES}" "${TX_BYTES}","
         return 0
     fi
     #echo "online"
     cpu_used
     net_flux
-    echo -e ${CTID}"\t" ${CPUUSAGE}"\t" ${RX_BYTES}"\t" ${TX_BYTES}"\t"
+    #echo -e ${CTID}"\t" ${CPUUSAGE}"\t" ${RX_BYTES}"\t" ${TX_BYTES}"\t"
+    echo -ne ${CTID}" "${CPUUSAGE}" "${RX_BYTES}" "${TX_BYTES}","
 }
 
 mom_all_online(){
@@ -84,6 +86,7 @@ mom_all(){
       CTID=$line
       mom_one
     done
+    echo -ne "\n"
 }
 
 #Main from here
