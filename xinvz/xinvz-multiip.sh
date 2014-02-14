@@ -21,9 +21,9 @@ add_network(){
             id=$[$max+1]
         fi
         config="DEVICE=${DEVNAME}:${id} ONBOOT=yes BOTOPROTO=no IPADDR=${IPADDR} NETMASK=${NETMASK}"
-        echo $config
-        echo "ifcfg-${DEVNAME}:$id"
-        echo "$config > /etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id"
+        #echo $config
+        #echo "ifcfg-${DEVNAME}:$id"
+        #echo "$config > /etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id"
 
         vzctl exec $CTID "echo $config > /etc/sysconfig/network-scripts/ifcfg-${DEVNAME}:$id"
         #vzctl exec $CTID echo "DEVICE=${DEVNAME}:${id}
@@ -34,7 +34,7 @@ add_network(){
         vzctl exec $CTID ifup $DEVNAME:$id
     fi
 
-    echo "$?"
+    return 0
 }
 
 
@@ -84,3 +84,4 @@ fi
 #echo "NETMASK is " $NETMASK
 
 add_network
+echo "SUCCESS"
