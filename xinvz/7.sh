@@ -18,6 +18,10 @@ id2=`echo $date2 | awk -F "," '{print $2}'`
 total=`expr $total2 - $total1`
 id=`expr $id2 - $id1`
 used=`expr $total -$id`
-eval awk 'BEGIN{printf"%.2f",$used/$total}'
+
+#example
+#awk 'BEGIN{printf "%.2f%\n",'$num1'/'$num2'}'
+awk 'BEGIN{printf "%.2f\n", ('$used'/'$total')*100}'
+#eval awk 'BEGIN{printf"%.2f",$used/$total}'
 #rate=`expr $id / $total`
 #echo $rate
