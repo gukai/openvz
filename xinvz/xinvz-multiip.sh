@@ -5,6 +5,14 @@ usage-usage(){
     echo "xinvz-multiip.sh <--devname name> <--ipaddr ip> <--netmask mask>"
 }
 
+system_online(){
+    if vzctl exec2 $CTID ifconfig >/dev/null 2>&1  ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 add_network(){
     checketh=`vzctl exec $CTID ls /etc/sysconfig/network-scripts/ifcfg-${DEVNAME} 2>/dev/null`
     #echo $checketh
@@ -74,6 +82,12 @@ fi
 if [ -z ${CTID} ];then
     echo "ERROR"
     echo "Parameter ctid must be set."
+    exit 1
+fi
+
+if ! system_online; then
+    echo "ERROR"
+    echo "VM is not online or exist."
     exit 1
 fi
 

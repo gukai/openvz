@@ -18,24 +18,39 @@ is_online(){
     fi
 }
 
+cpu_record(){
+    local log_record=$(vzctl exec $CTID cat /proc/stat | grep 'cpu ' | awk '{print $2" "$3" "$4" "$5" "$6" "$7" "$8}')
+    local sys_record=$(vzctl exec $CTID echo $log1 | awk '{print $4}')
+    echo $(log_record),$(sys_record)
+}
 cpu_used(){
-    local i=0
-    local list=`vzctl exec $CTID vmstat 1 1 | awk '{if(NR==3)print $0;}'`
-    #echo $list
+   # CPUUSAGE=`vzctl exec2 $CTID top -n 1 | grep 'Cpu(s)' | awk '{print $5}' | cut -d'%' -f1`
+   local log1=$(vzctl exec $CTID cat /proc/stat | grep 'cpu ' | awk '{print $2" "$3" "$4" "$5" "$6" "$7" "$8}')
+   local sys1=$(vzctl exec $CTID echo $log1 | awk '{print $4}')
+   local total1=$(echo $log1 | awk '{print $1+$2+$3+$4+$5+$6+$7}')
+   echo "sys1" : $sys1
+   echo "total1" : $total1
+   sleep 5
 
-    for c in $list; do
-       i=`expr $i + 1`
-       if [ $i -eq 15 ]; then id=$c; fi
-    done
+   local log2=$(vzctl exec $CTID cat /proc/stat | grep 'cpu ' | awk '{print $2" "$3" "$4" "$5" "$6" "$7" "$8}')
+   local sys2=$(vzctl exec $CTID echo $log1 | awk '{print $4}')
+   local total2=$(echo $log1 | awk '{print $1+$2+$3+$4+$5+$6+$7}')
+  
+   echo "sys2: "$sys2
+   echo "total2" $total2
+ 
+  local sys=`expr $sys2 - $sys1`
+  local total=`expr $total2 - $total1`
 
-    CPUUSAGE=`expr 100 - $id`
+  PUUSAGE=`expr $sys / $total`
+  
 }
 
 net_flux(){
     vm_id=$CTID
     ex_nic=veth${vm_id}.1
     #echo $ex_nic
-    TX_BYTES=`cat /sys/devices/virtual/net/${ex_nic}/statistics/tx_bytes 2>/dev/null`
+    TX_BYTES=`cat /sys/device3s/virtual/net/${ex_nic}/statistics/tx_bytes 2>/dev/null`
     RX_BYTES=`cat /sys/devices/virtual/net/${ex_nic}/statistics/rx_bytes 2>/dev/null`
 
     #when some problem occured before, the value will be null.
