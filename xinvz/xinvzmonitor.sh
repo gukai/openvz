@@ -30,7 +30,8 @@ cpu_record(){
 cpu_used(){
     # CPUUSAGE=`vzctl exec2 $CTID top -n 1 | grep 'Cpu(s)' | awk '{print $5}' | cut -d'%' -f1`
     date1=`cpu_record`
-    sleep 1
+    # One hundred times per second
+    sleep 5
     date2=`cpu_record`
 
     total1=`echo $date1 | awk -F "," '{print $1}'`
@@ -100,8 +101,9 @@ mom_all(){
     #echo $runninglist
     for line in $runninglist; do
       CTID=$line
-      mom_one
+      mom_one &
     done
+    sleep 10
     echo -ne "\n"
 }
 

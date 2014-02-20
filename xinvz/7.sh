@@ -10,7 +10,9 @@ cpu_record(){
 
 cpu_rate(){
     date1=`cpu_record`
-    sleep 1
+    #precision is low, but decrease the time when handle too much machine.
+    #think about muti-process.
+    usleep 100000
     date2=`cpu_record`
 
     total1=`echo $date1 | awk -F "," '{print $1}'`
@@ -24,7 +26,22 @@ cpu_rate(){
     #example
     #awk 'BEGIN{printf "%.2f%\n",'$num1'/'$num2'}'
     awk 'BEGIN{printf "%.0f\n", ('$used'/'$total')*100}'
+    echo $total
+    #echo $used
 }
+cpu_rate
 
-ret=`cpu_rate`
-echo $ret
+
+#ret=`cpu_rate`
+#echo "func 1:" $ret
+
+
+
+#cpu_rate2(){
+#    local id=`vzctl exec 109 top -bn 1 | grep 'Cpu(s)' | awk -F "," '{print $4}'| cut -d'%' -f1 | cut -d' ' -f2`
+#    echo $id
+#    #awk 'BEGIN{printf "%.0f\n", 100-'$id'}'
+#
+#
+#}
+#cpu_rate2
