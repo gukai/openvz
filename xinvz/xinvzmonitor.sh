@@ -50,7 +50,7 @@ net_flux(){
     vm_id=$CTID
     ex_nic=veth${vm_id}.1
     #echo $ex_nic
-    TX_BYTES=`cat /sys/device3s/virtual/net/${ex_nic}/statistics/tx_bytes 2>/dev/null`
+    TX_BYTES=`cat /sys/devices/virtual/net/${ex_nic}/statistics/tx_bytes 2>/dev/null`
     RX_BYTES=`cat /sys/devices/virtual/net/${ex_nic}/statistics/rx_bytes 2>/dev/null`
 
     #when some problem occured before, the value will be null.
