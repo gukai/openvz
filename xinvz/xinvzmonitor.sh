@@ -1,5 +1,5 @@
 #!/bin/sh
-PUUSAGE=0
+CPUUSAGE=0
 TX_BYTES=0
 RX_BYTES=0
 DISK_READ=0
@@ -18,32 +18,33 @@ is_online(){
     fi
 }
 
+  
 cpu_record(){
     local log_record=$(vzctl exec $CTID cat /proc/stat | grep 'cpu ' | awk '{print $2" "$3" "$4" "$5" "$6" "$7" "$8}')
-    local sys_record=$(vzctl exec $CTID echo $log1 | awk '{print $4}')
-    echo $(log_record),$(sys_record)
+    local id_record=$(vzctl exec $CTID echo $log_record | awk '{print $4}')
+    local total_record=$(echo $log_record | awk '{print $1+$2+$3+$4+$5+$6+$7}')
+    local used_record=`expr $total_record - $id_record`
+    echo ${total_record},${used_record}
 }
+
 cpu_used(){
-   # CPUUSAGE=`vzctl exec2 $CTID top -n 1 | grep 'Cpu(s)' | awk '{print $5}' | cut -d'%' -f1`
-   local log1=$(vzctl exec $CTID cat /proc/stat | grep 'cpu ' | awk '{print $2" "$3" "$4" "$5" "$6" "$7" "$8}')
-   local sys1=$(vzctl exec $CTID echo $log1 | awk '{print $4}')
-   local total1=$(echo $log1 | awk '{print $1+$2+$3+$4+$5+$6+$7}')
-   echo "sys1" : $sys1
-   echo "total1" : $total1
-   sleep 5
+    # CPUUSAGE=`vzctl exec2 $CTID top -n 1 | grep 'Cpu(s)' | awk '{print $5}' | cut -d'%' -f1`
+    date1=`cpu_record`
+    sleep 1
+    date2=`cpu_record`
 
-   local log2=$(vzctl exec $CTID cat /proc/stat | grep 'cpu ' | awk '{print $2" "$3" "$4" "$5" "$6" "$7" "$8}')
-   local sys2=$(vzctl exec $CTID echo $log1 | awk '{print $4}')
-   local total2=$(echo $log1 | awk '{print $1+$2+$3+$4+$5+$6+$7}')
-  
-   echo "sys2: "$sys2
-   echo "total2" $total2
- 
-  local sys=`expr $sys2 - $sys1`
-  local total=`expr $total2 - $total1`
+    total1=`echo $date1 | awk -F "," '{print $1}'`
+    total2=`echo $date2 | awk -F "," '{print $1}'`
+    used1=`echo $date1 | awk -F "," '{print $2}'`
+    used2=`echo $date2 | awk -F "," '{print $2}'`
 
-  PUUSAGE=`expr $sys / $total`
-  
+    total=`expr $total2 - $total1`
+    used=`expr $used2 - $used1`
+
+    #example
+    #awk 'BEGIN{printf "%.2f%\n",'$num1'/'$num2'}'
+    #awk 'BEGIN{printf "%.0f\n", ('$used'/'$total')*100}' | read CPUUSAGE
+    CPUUSAGE=`awk 'BEGIN{printf "%.0f\n", ('$used'/'$total')*100}'`
 }
 
 net_flux(){
@@ -126,3 +127,4 @@ case "$1" in
         mom_one
         ;;
 esac
+
