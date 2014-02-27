@@ -25,3 +25,7 @@ systemonlinedelay(){
 #ctexist $1 || exit 1
 #systemonlinedelay $1 $2 || exit 1
 #SystemOnline $1
+
+hehe=""
+eee="shide"
+VerfiyParameter "hehe eee sss"
