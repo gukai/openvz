@@ -5,15 +5,22 @@
 # normal downlink grater than uplink
 
 . ./xinvz-lib.sh
+CTID=""      
+TIMEOUT=""
 
 
 validate(){
     if ! CtExist ${CTID};then
         echo "ERROR"
         echo "The CTID is not exist"
+        exit 1
     fi
-
-
+   
+    if ! SystemOnlineDelay ${CTID} ${TIMEOUT} ; then
+        echo "ERROR"
+        echo "The CT is not online"
+        exit 1
+    fi
 }
 
 
