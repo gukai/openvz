@@ -4,14 +4,18 @@
 # m(k)bit = m(k) bit per second
 # normal downlink grater than uplink
 
+. ./xinvz-lib.sh
 
-citd-exist(){
-    if ! vzlist $CTID -a >/dev/null 2>&1; then
+
+validate(){
+    if ! CtExist ${CTID};then
         echo "ERROR"
-        echo "The CTID is not exist."
-        exit 3
+        echo "The CTID is not exist"
     fi
+
+
 }
+
 
 DEV=$1
 DOWNLINK=$2mbit
