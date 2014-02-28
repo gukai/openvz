@@ -29,14 +29,15 @@ systemonlinedelay(){
 
 #testexample
 hehe="zouzhe"
-eee="shide"
+#eee="shide"
 sss="haode"
 verfiyparameter(){
-    local para=$1
+    local paralist=$1
 
-    if ! ret=`VerfiyParameter "$para"`; then
+    if ! ret=`VerfiyParameter "$paralist"`; then
         echo "ERROR"
-        echo "Parameter $ret is Null."
+        echo "Parameter $ret is not set."
+        exit 1
     fi
 }
 verfiyparameter "hehe eee sss"
