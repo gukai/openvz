@@ -40,8 +40,9 @@ verfiyparameter(){
         exit 1
     fi
 }
-verfiyparameter "hehe eee sss"
+#verfiyparameter "hehe eee sss"
 
+MacToName 109 00:18:51:AB:29:02
 
 
 #other func in lib.

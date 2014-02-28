@@ -60,6 +60,38 @@ VerfiyParameter(){
     return 0  
 }
 
+MacToName(){
+    local ctid=$1
+    local srcmac=$2
+    
+    local configfile=/etc/vz/conf/${ctid}.conf
+    echo $configfile
+    . $configfile
+    NETIFLIST=$(printf %s "$NETIF" |tr ';' '\n')
+    #echo $NETIFLIST
+
+    for iface in $NETIFLIST; do
+        bridge=
+        host_ifname=
+        for str in $(printf %s "$iface" |tr ',' '\n'); do
+            case "$str" in
+                bridge=*|mac=*|ifname=*)
+                    eval "${str%%=*}=\${str#*=}" 
+                    echo $ifname " : " $mac
+                    ;;
+            esac
+        done
+        
+#        if [[ $srcmac == $mac ]];then
+#            echo $ifname
+#            return 0
+#        fi
+
+    done
+    echo "failed"    
+    return 0
+
+}
 
 
 
