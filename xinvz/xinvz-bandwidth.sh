@@ -5,14 +5,50 @@
 # normal downlink grater than uplink
 
 . ./xinvz-lib.sh
+TIMEOUT=1
 CTID=""
-TIMEOUT=""
 DEVNAME=""
 DOWNLINK=""
 UPLINKLINK=""
 
+usage(){
+    usage-exec
+    usage-show
+    usage-usage
+}
+
+usage-exec(){
+    echo "./xinvz-bandwidth.sh --command limit  <--devname dev> <--downlink num> <--uplink num> <--ctid ctid>  [--timeout time]"
+    echo "        --ctid: the CT's id."
+    echo "        --devname: the devname in CT."
+    echo "        --downlink: the size of downlink bandwidth, the unit is mbit."
+    echo "        --downlink: the size of uplink bandwidth, the unit is mbit."
+    echo "        --timeout: command timeout. optional, the default value is 1"
+    echo ""
+}
+
+usage-show(){
+    echo "./xinvz-bandwidth.sh --command show <--ctid ctid> <--devname dev>"
+    echo "        --ctid: the CT's id"
+    echo "        --devname: the devname in CT"
+    echo ""
+}
+
+usage-usage(){
+    echo "./xinvz-bandwidth.sh --command usage"
+    echo ""
+}
+
 
 validate(){
+
+    local paralist="CTID DEVNAME DOWNLINK UPLINK"
+    if ! ret=`VerfiyParameter "$paralist"`; then
+        echo "ERROR"
+        echo "Parameter $ret is not set."
+        exit 1
+    fi
+
     if ! CtExist ${CTID};then
         echo "ERROR"
         echo "The CTID is not exist"
@@ -26,46 +62,55 @@ validate(){
     fi
 }
 
+show-limit(){
 
-exec-limit(){
-    DEV=$1
-    DOWNLINK=$2mbit
-    UPLINK=$3mbit
-    burst=1m
-
-    # clean existing down- and uplink qdiscs, hide errors
-    /sbin/tc qdisc del dev $DEV root 2> /dev/null > /dev/null
-    /sbin/tc qdisc del dev $DEV ingress 2> /dev/null > /dev/null
-
-    # uplink
-    # install root HTB, point default traffic to 1::
-    /sbin/tc qdisc add dev $DEV root handle 1: htb default 1
-    /sbin/tc class add dev $DEV parent 1: classid 1:1 htb rate ${UPLINK} ceil ${UPLINK} burst ${burst}
-
-    # downlink
-    /sbin/tc qdisc add dev $DEV handle ffff: ingress
-    /sbin/tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 match ip src 0.0.0.0/0 police rate ${DOWNLINK} burst ${burst} drop flowid :1
-
-    # show uplink qdisc and class detail 
-    /sbin/tc -s qdisc show dev $DEV
-    /sbin/tc -s class show dev $DEV
-    /sbin/tc filter ls dev $DEV parent ffff:
-
-    echo $?
-}
-
-limit-test(){
-    local paralist="CTID DEVNAME DOWNLINK UPLINK"
+    local paralist="CTID DEVNAME"
     if ! ret=`VerfiyParameter "$paralist"`; then
         echo "ERROR"
         echo "Parameter $ret is not set."
         exit 1
     fi
+
+    local num=`echo $DEVNAME | grep -Eo '[0-9]+'`
+    local outdev=veth$CTID.$num
+
+    # show uplink qdisc and class detail
+    /sbin/tc -s qdisc show dev $outdev
+    /sbin/tc -s class show dev $outdev
+    /sbin/tc filter ls dev $outdev parent ffff:    
+}
+
+
+exec-limit(){
+    validate
+    local num=`echo $DEVNAME | grep -Eo '[0-9]+'`
+    local outdev=veth$CTID.$num
+    local downlink=${DOWNLINK}mbit
+    local uplink=${UPLINK}mbit
+    local burst=1m
+    #echo $downlink $uplink $burst
+
+    # clean existing down- and uplink qdiscs, hide errors
+    /sbin/tc qdisc del dev $outdev root >/dev/null 2>&1
+    /sbin/tc qdisc del dev $outdev ingress >/dev/null 2>&1
+   
+    # uplink
+    # install root HTB, point default traffic to 1::
+    /sbin/tc qdisc add dev $outdev root handle 1: htb default 1 >/dev/null 2>&1
+    /sbin/tc class add dev $outdev parent 1: classid 1:1 htb rate ${uplink} ceil ${uplink} burst ${burst} >/dev/null 2>&1
+
+    # downlink
+    /sbin/tc qdisc add dev $outdev handle ffff: ingress >/dev/null 2>&1
+    /sbin/tc filter add dev $outdev parent ffff: protocol ip prio 50 u32 match ip src 0.0.0.0/0 police rate ${downlink} burst ${burst} drop flowid :1 >/dev/null 2>&1
+
+    echo "SUCCESS"
+    return 0
+
 }
 
 
 
-TEMP=`getopt -o m:c:d:x:s --long command:,ctid:,devname:,downlink:,uplink: \
+TEMP=`getopt -o m:c:d:x:s:t --long command:,ctid:,devname:,downlink:,uplink:,timeout: \
      -n 'ERROR' -- "$@"`
 
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
@@ -79,6 +124,7 @@ while true ; do
                 -c|--devname) DEVNAME=$2 ; shift 2 ;;
                 -x|--downlink) DOWNLINK=$2 ; shift 2 ;;
                 -n|--uplink) UPLINK=$2 ; shift 2 ;;
+                -t|--timeout) TIMEOUT=$2 ; shift 2 ;;
                 --) shift ; break ;;
                 *) echo "Unknow Option, verfiy your command" ; usage; exit 1 ;;
         esac
@@ -90,8 +136,14 @@ if [ -z ${COMMAND} ];then
     exit 1
 fi
 
+
 case $COMMAND in
-    limit) limit-test ;;
+    limit) exec-limit ;;
     show) show-limit;;
     usage) usage ;;
+    *) usage ;;
 esac
+
+if ! [ $? -eq 0 ]; then
+    echo "ERROR"
+fi
