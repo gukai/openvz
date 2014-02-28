@@ -10,6 +10,8 @@ ctexist(){
         exit 1
     fi
 }
+#ctexist $1 || exit 1
+
 
 systemonlinedelay(){
     local CTID=$1
@@ -22,10 +24,24 @@ systemonlinedelay(){
     fi
 
 }
-#ctexist $1 || exit 1
 #systemonlinedelay $1 $2 || exit 1
-#SystemOnline $1
 
-hehe=""
+
+#testexample
+hehe="zouzhe"
 eee="shide"
-VerfiyParameter "hehe eee sss"
+sss="haode"
+verfiyparameter(){
+    local para=$1
+
+    if ! ret=`VerfiyParameter "$para"`; then
+        echo "ERROR"
+        echo "Parameter $ret is Null."
+    fi
+}
+verfiyparameter "hehe eee sss"
+
+
+
+#other func in lib.
+#SystemOnline $1

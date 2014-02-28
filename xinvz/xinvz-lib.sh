@@ -45,17 +45,16 @@ SystemOnlineDelay(){
 
 VerfiyParameter(){
     local liststr=$1
+    #echo $liststr
     local paralist=$(printf %s "$liststr" |tr ' ' '\n')
 
     for paraname in $paralist; do
         eval paravalue="$"$paraname
-        echo $paraname is $paravalue
-        #echo $para
-        #eval if [ -z "$"$para ]; then
-        #eval if true; then
-        #    echo $para
-        #    return 1
-        #fi
+        #echo $paraname is $paravalue
+        if [ -z $paravalue ]; then
+            echo $paraname
+            return 1
+        fi
     done
   
     return 0  
