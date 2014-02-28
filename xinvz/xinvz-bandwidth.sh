@@ -5,9 +5,11 @@
 # normal downlink grater than uplink
 
 . ./xinvz-lib.sh
-CTID=""      
+CTID=""
 TIMEOUT=""
-
+DEVNAME=""
+DOWNLINK=""
+UPLINKLINK=""
 
 
 validate(){
@@ -52,9 +54,18 @@ exec-limit(){
     echo $?
 }
 
+limit-test(){
+    local paralist="CTID DEVNAME DOWNLINK UPLINK"
+    if ! ret=`VerfiyParameter "$paralist"`; then
+        echo "ERROR"
+        echo "Parameter $ret is not set."
+        exit 1
+    fi
+}
 
 
-TEMP=`getopt -o m:c:b:d:i:n:g:s:z: --long command:,ctid:,bridge:,devname:,ipaddr:,netmask:,gateway:,dns1:,dns2: \
+
+TEMP=`getopt -o m:c:d:x:s --long command:,ctid:,devname:,downlink:,uplink: \
      -n 'ERROR' -- "$@"`
 
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
@@ -65,15 +76,11 @@ while true ; do
         case "$1" in
                 -m| --command) COMMAND=$2 ; shift 2 ;;
                 -c|--ctid) CTID=$2; shift 2 ;;
-                -b|--bridge) BRIDGE=$2 ; shift 2 ;;
                 -c|--devname) DEVNAME=$2 ; shift 2 ;;
-                -i|--ipaddr) IPADDR=$2 ; shift 2 ;;
-                -n|--netmask) NETMASK=$2 ; shift 2 ;;
-                -g|--gateway) GATEWAY=$2; shift 2 ;;
-                -s|--dns1) DNS1=$2; shift 2 ;;
-                -z|--dns2) DNS2=$2; shift 2 ;;
+                -x|--downlink) DOWNLINK=$2 ; shift 2 ;;
+                -n|--uplink) UPLINK=$2 ; shift 2 ;;
                 --) shift ; break ;;
-                *) echo "Unknow Option, verfiy your command" ; usage-usage; exit 1 ;;
+                *) echo "Unknow Option, verfiy your command" ; usage; exit 1 ;;
         esac
 done
 
@@ -84,8 +91,7 @@ if [ -z ${COMMAND} ];then
 fi
 
 case $COMMAND in
-    create) create-veth ;;
-    net-init) net-init;;
-    usage) all-usage ;;
-    addbrif) addbrif;;
+    limit) limit-test ;;
+    show) show-limit;;
+    usage) usage ;;
 esac
