@@ -42,8 +42,13 @@ verfiyparameter(){
 }
 #verfiyparameter "hehe eee sss"
 
-MacToName 109 00:18:51:AB:29:02
 
 
 #other func in lib.
 #SystemOnline $1
+
+if ! ret=`IfaceInfoFind 109 mac gu00:18:51:B8:AE:09 ifname`; then
+    echo "ERROR"
+    echo $ret
+fi
+echo $ret

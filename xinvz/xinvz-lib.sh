@@ -42,7 +42,7 @@ SystemOnlineDelay(){
     fi
 }
 
-
+#echo the unset parameter name and return 1 if have some parameter unset.
 VerfiyParameter(){
     local liststr=$1
     #echo $liststr
@@ -60,38 +60,76 @@ VerfiyParameter(){
     return 0  
 }
 
-MacToName(){
+#NAME: By leaving src and srcvalue to find the vaule of dest in interface section of config file.
+#SYNOPSIS: IfaceInfoFind <ctid> <src> <srcvalue> <dest>
+#RETURN:
+#   0: return 0 if success, echo the answer.
+#   1: return 1 if ctid is not exist, echo the error info.
+#   3: return 3 if src is not exist in config or is not match, echo the error info
+#   4: return 4 if dest is not exist in config, echo the error info.
+#PARAMETER:
+#   ctid: the vm id which you search info.
+#   src: the name of unique info you know about the ifaceinfo.
+#   srcvaule: the value of src.
+#   dest: the name of ifaceinfo we want to know.
+#ifaceinfo in config: ifname/mac/host_ifname/host_mac/bridge
+#BUG: make sure the config file is exist, and check it before.
+IfaceInfoFind(){
     local ctid=$1
-    local srcmac=$2
-    
-    local configfile=/etc/vz/conf/${ctid}.conf
-    echo $configfile
-    . $configfile
+    local src=$2
+    local srcvaule=$3
+    local dest=$4
+    CONFIGFILE=/etc/vz/conf/${ctid}.conf
+    if [ ! -f $CONFIGFILE ]; then
+        echo "the vm config file is not exist."
+        return 1
+    fi
+    . $CONFIGFILE
+
     NETIFLIST=$(printf %s "$NETIF" |tr ';' '\n')
+    #the all config line.
     #echo $NETIFLIST
 
     for iface in $NETIFLIST; do
-        bridge=
-        host_ifname=
+        #complete interface info(ifname,host_ifname,bridge,and so on.)
+        #echo $iface
+
+        local ifname=""
+        local mac=""
+        local host_ifname=""
+        local host_mac=""
+        local bridge=""
+
         for str in $(printf %s "$iface" |tr ',' '\n'); do
-            case "$str" in
-                bridge=*|mac=*|ifname=*)
-                    eval "${str%%=*}=\${str#*=}" 
-                    echo $ifname " : " $mac
-                    ;;
-            esac
+            # every info str in one iface.
+            # echo $str
+
+            # info name.
+            local infoname=`echo $str | cut -d'=' -f1`
+            # info value
+            local infovalue=`echo $str | cut -d'=' -f2`
+            #echo "$infoname : $infovalue"
+
+            #set the value.
+            eval ${infoname}=${infovalue}
         done
-        
-#        if [[ $srcmac == $mac ]];then
-#            echo $ifname
-#            return 0
-#        fi
 
+        #get the src and dest vaule by search
+        eval local srcfind="\${$src}"
+        eval local destfind="\${$dest}"
+        #echo $srcfind
+
+        if [ "$srcfind" = "$srcvaule" ]; then
+            if [ -z $destfind ]; then
+                echo "if dest is not exist in config, echo the error info."
+                return 4
+            fi
+            echo $destfind
+            return 0
+        fi
     done
-    echo "failed"    
-    return 0
-
+    
+    echo "src is not exist in config or not match."
+    return 3
+        
 }
-
-
-
