@@ -1,142 +1,273 @@
 #!/bin/bash
+# ebtables in nat chain
 # ebtables for isolation network communication
-# need four arguments 
-#like as  commad {init|addguest|delguest|del} + iface + [ip + mac]
+# need five arguments 
+# like as  commad {init|addguest|delguest|del} + iface + [ip + mac] + protocol + port
+# if action is init {init + iface + ip + mac}
+# if action is addguest {addguest + iface + ip + [protocol + dport]}
+# if action is delguest {delguest + iface + ip + [protocol + dport]}
+# if action is del  {del + iface}
+# if want allow all traffic,use ip={0.0.0.0|0.0.0.0/0|0} 
+# use init + iface +ip + mac  to initialize interface,default deny all traffic  eg: ./ebtables init eth0 10.0.0.1 00:00:00:00:00:01
+# usually use addguest + iface + ip to allow special ip traffic                 eg: /ebtables addguest eth0 10.0.0.2
+# delete interface all rule                                                     eg: ./ebtables del eth0 
+# othen use:
+# allow all traffic                                                             eg: ./ebtables addguest eth0 0
+# allow all tcp traffic                                                         eg: ./ebtables addguest eth0 0 tcp
+# allow all tcp to destination ssh                                              eg: ./ebtables addguest eth0 0 tcp 22
+# allow spetial ip tcp traffic                                                  eg: ./ebtables addguest eth0 10.0.0.2 tcp
+# delete spectial traffic                                                       eg: ./ebtables delguest eth0 10.0.0.2 tcp
+
 
 action=$1
 vmeth=$2
-ip=$3
-mac=$4
 
-initebtables()
+initebtables ()
 {
-if [ !`brctl show |grep -i $vmeth` ]
+if [ "`brctl show |grep -i $vmeth`" = "" ]
+then
+    echo "$vmeth not in bridge!"
+    exit
+fi
+    ebtables -t nat -N I-$vmeth          &>/dev/null
+    ebtables -t nat -N O-$vmeth          &>/dev/null
+    ebtables -t nat -N I-$vmeth-mac      &>/dev/null
+    ebtables -t nat -N I-$vmeth-ipv4     &>/dev/null
+    ebtables -t nat -N I-$vmeth-arp-mac  &>/dev/null
+    ebtables -t nat -N I-$vmeth-arp-ip   &>/dev/null
+    ebtables -t nat -N I-$vmeth-rarp     &>/dev/null
+    ebtables -t nat -N O-$vmeth-ipv4     &>/dev/null
+    ebtables -t nat -N O-$vmeth-rarp     &>/dev/null
+    #add a new rule in nat table PREROUTING chain
+if [ "`ebtables -t nat -L PREROUTING | grep -i $vmeth`" = "" ]
+then
+    ebtables -t nat -A PREROUTING -i $vmeth -j I-$vmeth
+fi
+
+if [ "`ebtables -t nat -L POSTROUTING | grep -i $vmeth`" = "" ]
+then
+    #add a new rule in nat table POSTROUTING chain
+    ebtables -t nat -A POSTROUTING -o $vmeth -j O-$vmeth
+fi
+    #add new rules in nat table $vmeth chain
+    ebtables -t nat -A I-$vmeth -j I-$vmeth-mac
+    ebtables -t nat -A I-$vmeth -p IPv4 -j I-$vmeth-ipv4
+    ebtables -t nat -A I-$vmeth -p IPv4 -j ACCEPT
+    ebtables -t nat -A I-$vmeth -p ARP -j I-$vmeth-arp-mac
+    ebtables -t nat -A I-$vmeth -p ARP -j I-$vmeth-arp-ip
+    ebtables -t nat -A I-$vmeth -p 0x8035 -j I-$vmeth-rarp
+    ebtables -t nat -A I-$vmeth -p ARP -j ACCEPT
+    ebtables -t nat -A I-$vmeth -p 0x8035 -j ACCEPT
+    ebtables -t nat -A I-$vmeth -j DROP
+    ebtables -t nat -A O-$vmeth -p IPv4 -j O-$vmeth-ipv4
+    ebtables -t nat -A O-$vmeth -p 0x8035 -j O-$vmeth-rarp
+    ebtables -t nat -A O-$vmeth -p ARP -j ACCEPT
+    ebtables -t nat -A O-$vmeth -j DROP
+    #I-$vmeth-mac
+    ebtables -t nat -A I-$vmeth-mac -s $mac -j RETURN
+    ebtables -t nat -A I-$vmeth-mac -j DROP
+    #I-$vmeth-ip-ipv4
+    ebtables -t nat -A I-$vmeth-ipv4 -p IPv4 --ip-src 0.0.0.0 --ip-proto udp -j RETURN
+    ebtables -t nat -A I-$vmeth-ipv4 -p IPv4 --ip-src $ip -j RETURN
+    ebtables -t nat -A I-$vmeth-ipv4 -j DROP
+    #I-$vmeth-arp-mac
+    ebtables -t nat -A I-$vmeth-arp-mac -p ARP --arp-mac-src $mac -j RETURN
+    ebtables -t nat -A I-$vmeth-arp-mac -j DROP
+    #I-$vmeth-arp-ip
+    ebtables -t nat -A I-$vmeth-arp-ip -p ARP --arp-ip-src $ip -j RETURN
+    ebtables -t nat -A I-$vmeth-arp-ip -j DROP
+    #I-$vmeth-rarp
+    ebtables -t nat -A I-$vmeth-rarp -p 0x8035 -s $mac -d Broadcast --arp-op Request_Reverse \
+        --arp-ip-src 0.0.0.0 --arp-ip-dst 0.0.0.0 --arp-mac-src $mac --arp-mac-dst $mac -j ACCEPT
+    ebtables -t nat -A I-$vmeth-rarp -j DROP
+    #O-$vmeth-ipv4
+    ebtables -t nat -A O-$vmeth-ipv4 -j DROP
+   #ebtables -t nat -A O-$vmeth-ipv4 -j ACCEPT
+    #O-$vmeth-rarp
+    ebtables -t nat -A O-$vmeth-rarp -p 0x8035 -d Broadcast --arp-op Request_Reverse --arp-ip-src 0.0.0.0 \
+        --arp-ip-dst 0.0.0.0 --arp-mac-src $mac --arp-mac-dst $mac -j ACCEPT
+    ebtables -t nat -A O-$vmeth-rarp -j DROP
+}
+
+delebtables ()
+{
+if [ "`brctl show |grep -i $vmeth`" = "" ]
+then
+    echo "$vmeth not in bridge!"
+    exit
+fi
+    ebtables -t nat -F I-$vmeth  &>/dev/null
+    ebtables -t nat -F O-$vmeth  &>/dev/null
+    ebtables -t nat -F I-$vmeth-mac  &>/dev/null
+    ebtables -t nat -F I-$vmeth-ipv4  &>/dev/null
+    ebtables -t nat -F I-$vmeth-arp-mac  &>/dev/null
+    ebtables -t nat -F I-$vmeth-arp-ip  &>/dev/null
+    ebtables -t nat -F I-$vmeth-rarp  &>/dev/null
+    ebtables -t nat -F O-$vmeth-ipv4  &>/dev/null
+    ebtables -t nat -F O-$vmeth-rarp  &>/dev/null
+    ebtables -t nat -L PREROUTING --Ln | grep $vmeth |cut -d"." -f 1 | sort -r |  xargs -i ebtables -t nat -D PREROUTING {}  &>/dev/null
+    ebtables -t nat -L POSTROUTING --Ln | grep $vmeth |cut -d"." -f 1 | sort -r | xargs -i ebtables -t nat -D POSTROUTING {}  &>/dev/null
+    ebtables -t nat -X I-$vmeth  &>/dev/null
+    ebtables -t nat -X O-$vmeth  &>/dev/null
+    ebtables -t nat -X I-$vmeth-mac  &>/dev/null
+    ebtables -t nat -X I-$vmeth-ipv4  &>/dev/null
+    ebtables -t nat -X I-$vmeth-arp-mac  &>/dev/null
+    ebtables -t nat -X I-$vmeth-arp-ip  &>/dev/null
+    ebtables -t nat -X I-$vmeth-rarp  &>/dev/null
+    ebtables -t nat -X O-$vmeth-ipv4  &>/dev/null
+    ebtables -t nat -X O-$vmeth-rarp  &>/dev/null
+}
+
+addguest()
+{
+if [ "`brctl show |grep -i $vmeth`" = "" ]
 then
     echo "$vmeth not in bridge!"
     exit
 fi
 
-local number=`ebtables -t filter -L FORWARD |grep $vmeth |wc -l`
-if [ $number -gt 0 ]
+if [ $# = 1 ]
 then
-    echo "$vmeth chains is exist"
-    exit
-else
-    ebtables -t filter -N I-$vmeth &>/dev/null
-    ebtables -t filter -N I-$vmeth-ip &>/dev/null
-    ebtables -t filter -N I-$vmeth-mac &>/dev/null
-    ebtables -t filter -N O-$vmeth &>/dev/null
-    ebtables -t filter -N O-$vmeth-ip &>/dev/null
-    ebtables -t filter -N O-$vmeth-mac &>/dev/null
-    ebtables -t filter -A FORWARD -i $vmeth -j I-$vmeth
-    ebtables -t filter -A FORWARD -o $vmeth -j O-$vmeth
-    ebtables -t filter -A I-$vmeth -p IPv4 -j I-$vmeth-ip
-    ebtables -t filter -A I-$vmeth -j I-$vmeth-mac
-    ebtables -t filter -A I-$vmeth -j ACCEPT
-#    ebtables -t filter -A I-$vmeth -s $mac -j ACCEPT
-#    ebtables -t filter -A I-$vmeth -j DROP
-    ebtables -t filter -A I-$vmeth-ip -j DROP
-    ebtables -t filter -I I-$vmeth-ip 1 -p IPv4 --ip-src $ip -j RETURN
-    ebtables -t filter -A I-$vmeth-mac -j DROP
-    ebtables -t filter -I I-$vmeth-mac 1 -s $mac -j RETURN
-    ebtables -t filter -A O-$vmeth -p IPv4 -j O-$vmeth-ip
-    ebtables -t filter -A O-$vmeth -j O-$vmeth-mac
-    ebtables -t filter -A O-$vmeth -p ARP -j ACCEPT
-    ebtables -t filter -A O-$vmeth -j DROP
-    ebtables -t filter -A O-$vmeth-ip -j DROP
-    ebtables -t filter -A O-$vmeth-mac -j ACCEPT
-fi
-}
-
-addguest()
-{
-local number=`ebtables -t filter -L O-$vmeth-mac --Lmac2 | grep -i $mac |wc -l`
-if [ $number -ne 0 ]
-then 
-    echo "The $mac is exist"
-    exit
-else
-    ebtables -t filter -I O-$vmeth-mac 1 -s $mac -j ACCEPT
-#    local linenumber=`ebtables -t filter -L O-$vmeth --Ln |grep -i ARP |cut -d"." -f 1`
-#    ebtables -t filter -I O-$vmeth-ip 1 -p IPv4 --ip-src $ip -j ACCEPT
+    if [ "$ip" = "0.0.0.0" -o "$ip" = "0.0.0.0/0" -o "$ip" = "0" ]
+    then
+        ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 -j ACCEPT
+    else
+        ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-src $ip -j ACCEPT
+    fi
 fi
 
-local number1=`ebtables -t filter -L O-$vmeth-ip | grep $ip |wc -l`
-if [ $number1 -ne 0 ]
+if [ $# = 2 ]
 then
-    echo "The $ip is exist"
-    exit
-else
-    ebtables -t filter -I O-$vmeth-ip 1 -p IPv4 --ip-src $ip -j ACCEPT
+    if [ "$ip" = "0.0.0.0" -o "$ip" = "0.0.0.0/0" -o "$ip" = "0" ]
+    then
+        ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-proto $protocol -j ACCEPT
+    else
+        ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-src $ip --ip-proto $protocol -j ACCEPT
+    fi
+fi
+
+if [ $# = 3 ]
+then
+    if [ "$ip" = "0.0.0.0" -o "$ip" = "0.0.0.0/0" -o "$ip" = "0" ]
+    then
+        if [ "$protocol" = "icmp" ]
+        then
+            ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-proto $protocol -j ACCEPT
+        else
+            ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-proto $protocol --ip-dport $dport -j ACCEPT
+        fi
+    else
+        if [ "$protocol" = "tcp" -o "$protocol" = "udp" ]
+        then
+            ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-src $ip --ip-proto $protocol --ip-dport $dport -j ACCEPT 
+        else
+            ebtables -t nat -I O-$vmeth-ipv4 1 -p IPv4 --ip-src $ip --ip-proto $protocol -j ACCEPT
+        fi
+    fi
 fi
 }
 
 delguest()
 {
-local number=`ebtables -t filter -L O-$vmeth-mac --Lmac2 | grep -i $mac |wc -l`
-if [ $number -eq 0 ]
+if [ "`brctl show |grep -i $vmeth`" = "" ]
 then
-    echo "The $mac is not exist"
+    echo "$vmeth not in bridge!"
     exit
-else
-    local line_number=`ebtables -t filter -L O-$vmeth-mac --Ln --Lmac2 | grep -i $mac |awk -F"." NR==1'{print $1}'`
-    ebtables -t filter -D O-$vmeth-mac $line_number
 fi
 
-local number1=`ebtables -t filter -L O-$vmeth-ip | grep $ip |wc -l`
-if [ $number1 -eq 0 ]
+if [ $# = 1 ]
 then
-    echo "The $ip is not exist"
-    exit
-else
-    local line_number=`ebtables -t filter -L O-$vmeth-ip --Ln | grep $ip |awk -F"." NR==1'{print $1}'`
-    ebtables -t filter -D O-$vmeth-ip $line_number
+    if [ "$ip" = "0.0.0.0" -o "$ip" = "0.0.0.0/0" -o "$ip" = "0" ]
+    then
+        ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4-jaccept" | cut -d"." -f 1 | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+    else
+        ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-src$ip-jaccept" | cut -d"." -f 1 | sort -r \
+        | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+    fi
 fi
-}
 
-delebtables()
-{
-local number=`ebtables -t filter -L FORWARD |grep -i $vmeth |wc -l`
-if [ $number -eq 0 ]
+if [ $# = 2 ]
 then
-    echo "$vmeth chains is not exist"
-    exit
-else
-    for ((i=1;i<=$number;i++))
-    do
-        local line_number=`ebtables -t filter -L FORWARD --Ln |grep -i $vmeth |awk -F"." NR==1'{print $1}'`
-        ebtables -t filter -D FORWARD $line_number
-    done
-    ebtables -t filter -F I-$vmeth 
-    ebtables -t filter -F O-$vmeth
-    ebtables -t filter -F I-$vmeth-ip
-    ebtables -t filter -F I-$vmeth-mac
-    ebtables -t filter -F O-$vmeth-ip
-    ebtables -t filter -F O-$vmeth-mac
-    ebtables -t filter -X I-$vmeth
-    ebtables -t filter -X O-$vmeth
-    ebtables -t filter -X I-$vmeth-ip
-    ebtables -t filter -X I-$vmeth-mac
-    ebtables -t filter -X O-$vmeth-ip
-    ebtables -t filter -X O-$vmeth-mac
+    if [ "$ip" = "0.0.0.0" -o "$ip" = "0.0.0.0/0" -o "$ip" = "0" ]
+    then
+        ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-proto$protocol-jaccept" | cut -d"." -f 1 \
+        | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+    else
+        ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-src$ip--ip-proto$protocol-jaccept" | cut -d"." -f 1 \
+        | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+    fi
+fi
+
+if [ $# = 3 ]
+then
+    if [ "$ip" = "0.0.0.0" -o "$ip" = "0.0.0.0/0" -o "$ip" = "0" ]
+    then
+        if [ "$protocol" = "icmp" ]
+        then
+            ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-proto$protocol-jaccept" | cut -d"." -f 1 \
+            | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+        else
+            ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-proto$protocol--ip-dport$dport-jaccept" | cut -d"." -f 1 \
+            | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+        fi
+    else
+        if [ "$protocol" = "tcp" -o "$protocol" = "udp" ]
+        then
+            ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-src$ip--ip-proto$protocol--ip-dport$dport-jaccept" | cut -d"." -f 1 \
+            | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+        else
+            ebtables -t nat -L O-$vmeth-ipv4 --Ln | tr -d " " | grep -i "pipv4--ip-src$ip--ip-proto$protocol-jaccept" | cut -d"." -f 1 \
+            | sort -r | xargs -i ebtables -t nat -D O-$vmeth-ipv4 {}
+	fi
+    fi
 fi
 }
 
 case "$action" in
     init|initebtables)
-	initebtables
-	;;
+        ip=$3
+        mac=$4
+        initebtables $ip $mac 
+        ;;
     add-guest|addguest)
-	addguest
-	;;
+        ip=$3
+        protocol=$4
+        dport=$5
+        if [ "$protocol" != "" -a "$dport" != "" ]
+        then
+            addguest $ip $protocol $dport
+        elif [ "$protocol" != "" ]
+        then
+            addguest $ip $protocol
+        else
+            addguest $ip
+        fi
+        ;;
     del-guest|delguest)
-	delguest
-	;;
+        ip=$3
+        protocol=$4
+        dport=$5
+        if [ "$protocol" != "" -a "$dport" != "" ]
+        then
+            delguest $ip $protocol $dport
+        elif [ "$protocol" != "" ]
+        then
+            delguest $ip $protocol
+        else
+            delguest $ip
+        fi
+        ;;
     del|delebtables)
-	delebtables
-	;;
+        delebtables
+        ;;
     *)	
-	echo $"Usage: $0 {init|addguest|delguest|del} + iface + [ip + mac]"
-    
+        echo $"Usage: $0 {init|addguest|delguest|del} + iface + [ip|mac] + protocol + port"
 esac
+
+if [ "`chkconfig |grep ebtables | awk '{print $4$5$7}'`" != "2:on3:on5:on" ]
+then
+    chkconfig ebtables --levels 235 on
+fi
+
+service ebtables save
 echo $?
