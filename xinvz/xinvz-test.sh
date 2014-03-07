@@ -50,5 +50,6 @@ verfiyparameter(){
 if ! ret=`IfaceInfoFind 109 mac gu00:18:51:B8:AE:09 ifname`; then
     echo "ERROR"
     echo $ret
+    exit
 fi
 echo $ret
