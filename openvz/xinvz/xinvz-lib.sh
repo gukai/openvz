@@ -51,7 +51,7 @@ VerfiyParameter(){
     for paraname in $paralist; do
         eval paravalue="$"$paraname
         #echo $paraname is $paravalue
-        if [ -z $paravalue ]; then
+        if [ -z "$paravalue" ]; then
             echo $paraname
             return 1
         fi
