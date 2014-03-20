@@ -133,3 +133,33 @@ IfaceInfoFind(){
     return 3
         
 }
+
+
+# $1 is the paralist which want to modify from the sedfile($2)
+# sedfile must be the full path.
+# return the cmd string.
+# make sure the $2 is not null, or it will block here.
+# the parameter needed in template must like that: <parameter="">
+MakeScript(){
+    local paralist=$1
+    local sedfile=$2
+    local rescpath=$3
+    local cmd="sed"
+
+    for para in $paralist; do
+      #eval echo "$"$para
+      local paravalue=`eval echo "$"$para`
+      local srcstr=`echo "$para=\"\""`
+      local deststr=`echo "$para=\"$paravalue\""`
+
+      cmd="$cmd -e '/$srcstr/c $deststr'"
+      #echo $cmd
+    done
+  
+    cmd="$cmd $sedfile > $rescpath"
+    eval $cmd
+}
+#test
+#CTID=200
+#COMMENT="new"
+#MakeScript "CTID COMMENT" "./template" "./gukai"
