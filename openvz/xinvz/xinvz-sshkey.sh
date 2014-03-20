@@ -25,7 +25,8 @@ usage(){
 scriptname(){
     local seconds=`date +%s`
     scppath="sshkey-${seconds}-${COMMAND}.sh"
-    echo $scppath
+    mkdir -p /var/run/xinvz
+    echo "/var/run/xinvz/${scppath}"
 }
 
 
@@ -44,32 +45,19 @@ create(){
 }
 
 detach(){
-    #MakeScript "CTID COMMENT" "./template" "./gukai"        
-    if [ ! -e $PKeyPath ]; then
-        echo "authorized_keys is not exist."
-        exit 0
-    fi
-
-    local comment=$1
-    local cmd="sed -i '/${comment}$/d' ${PKeyPath}"
-    eval $cmd       
+    local scpname=`scriptname`
+    MakeScript "COMMAND COMMENT" "./template/xinvz-sshkey-temp" $scpname
+    
+    vzctl runscript $CTID $scpname 
+    rm $scpname
 }
 
 attach(){
-    local pubkeystr=$1
-    #echo $pubkeystr
-
-    if [ ! -d $KeyDir ]; then
-        mkdir -p $KeyDir
-        chmod 700 $KeyDir
-    fi
-
-    if [ ! -e $PKeyPath ]; then
-        touch $PKeyPath
-        chmod 600 $PKeyPath
-    fi
-  
-   echo $pubkeystr >> $PKeyPath
+    local scpname=`scriptname`
+    MakeScript "COMMAND PUBKEY" "./template/xinvz-sshkey-temp" $scpname
+    
+    vzctl runscript $CTID $scpname 
+    rm $scpname
 }
 
 
@@ -94,7 +82,8 @@ while true ; do
 done
 
 if [ -z "${COMMAND}" ];then
-    echo "COMMAND IS NULL"
+    echo "ERROR"
+    echo "$0: the command is null"
     exit 1
 fi
 
@@ -102,14 +91,16 @@ fi
 case $COMMAND in
     attach)
         if ! ret=`VerfiyParameter "CTID PUBKEY"`; then
-              echo "PUBKEY not set"
+              echo "ERROR"
+              echo "$ret is not set"
               exit 1
         fi 
         attach "$PUBKEY" 
         ;;
     detach) 
        if ! ret=`VerfiyParameter "CTID COMMENT"`; then
-              echo "COMMENT not set"
+              echo "ERROR"
+              echo "$ret not set"
               exit 1
        fi
        detach $COMMENT  

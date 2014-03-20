@@ -4,6 +4,7 @@
 
 KeyDir="/root/.ssh/"
 PKeyPath="/root/.ssh/authorized_keys"
+COMMAND=""
 PUBKEY=""
 COMMENT=""
 TYPE=""
