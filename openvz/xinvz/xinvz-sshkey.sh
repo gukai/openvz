@@ -32,7 +32,7 @@ scriptname(){
 
 create(){
    local pridir=`dirname $PRIFILE`
-   echo $pridir
+   #echo $pridir
 
    if [ ! -d $pridir ]; then
         mkdir -p $pridir
@@ -42,6 +42,8 @@ create(){
    rm -f ${PRIFILE}.pub
 
    ssh-keygen -q -t $TYPE -N "" -C $COMMENT -f $PRIFILE > /dev/null 2>&1
+   echo "SUCCESS"   
+
 }
 
 detach(){
@@ -50,6 +52,7 @@ detach(){
     
     vzctl runscript $CTID $scpname 
     rm $scpname
+    echo "SUCCESS"
 }
 
 attach(){
@@ -120,5 +123,4 @@ case $COMMAND in
        exit 2
        ;;
 esac
-
 
