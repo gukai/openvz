@@ -61,6 +61,7 @@ attach(){
     
     vzctl runscript $CTID $scpname 
     rm $scpname
+    echo "SUCCESS"
 }
 
 
@@ -124,4 +125,3 @@ case $COMMAND in
        ;;
 esac
 
-echo "SUCCESS"
