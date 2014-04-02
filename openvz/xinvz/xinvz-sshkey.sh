@@ -124,3 +124,4 @@ case $COMMAND in
        ;;
 esac
 
+echo "SUCCESS"
