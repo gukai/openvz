@@ -2,27 +2,17 @@
 # Author: gukai(gukai@xinnet.com)
 # aotu create template, iso type will create template in by iso(can't put yourself pcgk in); path is the normally func.
 
+# FIX ME
+# Used to create clean VM Template
+# Not finished.
+
+
 create-path(}{
     if [ ! -d $SRCPATH ]; then
         cd $SRCPATH
         createrepo .
-         
-}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        
 ####MAIN#####
 TEMP=`getopt -o t:s:d: --long type:,srctype:,destpath: \
      -n 'ERROR' -- "$@"`
