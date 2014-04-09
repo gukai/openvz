@@ -42,6 +42,14 @@ SystemOnlineDelay(){
     fi
 }
 
+#makesure the ctid is exist.
+CurSnapshotId(){
+    local ctid=$1
+    ret=`vzctl snapshot-list $ctid -o current,id -H | grep ^* | awk '{print $2}' | cut -d '{' -f 2 | cut -d '}' -f1 2>/dev/null`
+    echo $ret
+}
+#CurSnapshotId 301
+
 #echo the unset parameter name and return 1 if have some parameter unset.
 VerfiyParameter(){
     local liststr=$1

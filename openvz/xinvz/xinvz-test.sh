@@ -47,9 +47,13 @@ verfiyparameter(){
 #other func in lib.
 #SystemOnline $1
 
-if ! ret=`IfaceInfoFind 109 mac gu00:18:51:B8:AE:09 ifname`; then
-    echo "ERROR"
-    echo $ret
-    exit
-fi
+#if ! ret=`IfaceInfoFind 109 mac gu00:18:51:B8:AE:09 ifname`; then
+#    echo "ERROR"
+#    echo $ret
+#    exit
+#fi
+#echo $ret
+
+ret=`CurSnapshotId 301`
 echo $ret
+
