@@ -171,3 +171,19 @@ MakeScript(){
 #CTID=200
 #COMMENT="new"
 #MakeScript "CTID COMMENT" "./template" "./gukai"
+
+
+
+# $1 is the DiskDescriptor.xml, $2 is the snapshot uuid .
+GetSnapshotImage(){
+    local xmlfile=$1
+    local snapshotid=$2
+
+    #cat $xmlfile | sed -n '$sedstr'
+    destline=`cat $xmlfile | sed -n -e '/<GUID>{'"${snapshotid}"'/,+2 p' | grep '<File>'`
+
+    #get the image name.
+    echo $destline | cut -d '<' -f 2 | cut -d '>' -f 2
+
+}
+#GetSnapshotImage $1 $2

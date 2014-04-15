@@ -2,7 +2,6 @@
 #Author: gukai(gukai@xinnet.com)
 #version 0.2
 
-
 . ./xinvz-vzctlerr.sh
 . ./xinvz-lib.sh
 
@@ -38,6 +37,32 @@ ctexist(){
     fi
 }
 
+mktreact(){
+    local bkdir=$1
+    local bkfile=$2
+    local actfile=${bkdir}/Active
+
+    if [ ! -f ${actfile} ]; then
+        touch ${actfile}
+    fi
+
+    echo $bkfile > ${actfile}
+
+}
+vefrtreact{
+    local bkdir=$1
+    local bkfile=$2
+    local actfile=${bkdir}/${bkfile}/Active
+
+    local inbkfile=`sed -n '1 p' ${actfile}`
+
+    if [ "$inbkfile" == "$bkfile" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
 bkfull(){
 
     #echo "make the full backup."
@@ -49,7 +74,6 @@ bkfull(){
     fi
     
     ctexist $CTID
-
    
     local id=$(uuidgen)
     local private_path=$(vzlist -H -o private $CTID)
@@ -64,27 +88,80 @@ bkfull(){
         exit 1
     fi
 
+    #Merge all snapshots down to base delta
+    ploop snapshot-merge -A ${private_path}/root.hdd/DiskDescriptor.xml
+    rm ${private_path}/Snapshots.xml 
+
     # Take a snapshot without suspending a CT and saving its config
     vzctl snapshot $CTID --id $id --skip-suspend --skip-config > /dev/null 2>&1
     vzctlinfo $?
 
     # Perform a backup using your favorite backup tool
     # (cp is just an example)
-    cp ${private_path}/root.hdd/* $bkpath/
+    cp -rp ${private_path}/root.hdd  $bkpath/
     
+    # back the Snapshot depended.
+    cp -fp ${private_path}/Snapshots.xml $bkpath/
+
     #FIX ME
     #compress or not？
 
-    # Delete (merge) the snapshot
-    vzctl snapshot-delete $CTID --id $id > /dev/null 2>&1
-    vzctlinfo $? "exit"
+    #do not delete the snapshot to hold the point to rollback.
+    #Delete (merge) the snapshot
+    #vzctl snapshot-delete $CTID --id $id > /dev/null 2>&1
+    #vzctlinfo $? "exit"
+
+    mktreact $BKDIR $bkfile
 
     echo "SUCCESS"
+    echo "id: $id"
     echo "bkfile: $bkfile"
 }
 
 bkincrement(){
-    echo "make the increment backup."
+    local paralist="CTID BKDIR BKFILE"
+    if ! ret=`VerfiyParameter "$paralist"`; then
+        echo "ERROR"
+        echo "Parameter $ret is not set."
+        exit 1
+    fi
+
+    ctexist $CTID
+
+    local id=$(uuidgen)
+    local private_path=$(vzlist -H -o private $CTID)
+    local bkpath=${BKDIR}/${BKFILE}
+
+    if [ ! -d ${bkpath} ]; then
+        echo "ERROR"
+        echo "the backfile your specified is not in the parameter bkdir."
+        exit 1
+    fi
+
+    if [ ! -d ${private_path}/root.hdd/ ]; then
+        echo "ERROR"
+        echo "The VM $CTID disk type is not ploop, we do not support other now."
+        exit 1
+    fi
+
+    if ! vefrtreact $BKDIR $BKFILE ; then
+        echo "ERROR"
+        echo "The tree you specified is not active."
+    fi
+
+    # Take a snapshot without suspending a CT and saving its config
+    vzctl snapshot $CTID --id $id --skip-suspend --skip-config > /dev/null 2>&1
+    vzctlinfo $?
+
+    local snapimg=`GetSnapshotImage ${private_path}/root.hdd/DiskDescriptor.xml $id`
+    #echo $snapimg
+    cp -fp ${private_path}/root.hdd/${snapimg}  $bkpath/root.hdd/    
+    cp -fp ${private_path}/root.hdd/DiskDescriptor.xml $bkpath/root.hdd/
+
+    cp -fp ${private_path}/Snapshots.xml $bkpath/
+
+    echo "SUCCESS"
+    echo "id $id"    
 }
 
 bkrollback(){
@@ -137,10 +214,6 @@ bkrollback(){
 delete(){
    echo "delete the special bakcup."
 }
-
-
-
-
 
 
 TEMP=`getopt -o m:c:d:f --long command:,ctid:,bkdir:,bkfile: \
