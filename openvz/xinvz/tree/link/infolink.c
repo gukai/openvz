@@ -5,7 +5,7 @@
 
 static ShotCL CLHead = NULL;
 
-extern ShotCL make_cl_node(char *guid, char *faguid){
+ShotCL make_cl_node(char *guid, char *faguid){
     ShotCL shot = malloc(sizeof(struct SnapShotCL));
     strcpy(shot->guid, guid);
     strcpy(shot->faguid, faguid);

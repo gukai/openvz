@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<libxml2/libxml/parser.h>
 #include<libxml2/libxml/tree.h>
+#include<string.h>
 #include"infolink.h"
 #define GUID_LEN 40
 //gcc -Wall 1.c -o 1 -I /usr/include/libxml2/ -lxml2
@@ -9,6 +10,7 @@
 
 static void parseit(xmlDocPtr doc, xmlNodePtr snap);
 static void insertlink(char *guid, char *faguid);
+static void maketop(char *guid, char *faguid);
 
 
 int putXMLInLink(char *xmlpath){
@@ -30,7 +32,7 @@ int putXMLInLink(char *xmlpath){
 
     if (xmlStrcmp(root_node->name, (const xmlChar *)"Snapshots")){
         //fprintf(stderr,"document of the wrong type, root node != story");
-        printf("document root is %s\n", root_node->name);
+        //printf("document root is %s\n", root_node->name);
         //xmlFreeDoc(doc);
         //return 1;
     }
@@ -38,7 +40,7 @@ int putXMLInLink(char *xmlpath){
     node = root_node->xmlChildrenNode;
     while(node != NULL){
         if (! xmlStrcmp(node->name, (const xmlChar *)"Snapshots")){
-             printf("find the Sanpshot point %s.\n", node->name);
+             //printf("find the Sanpshot point %s.\n", node->name);
              parseit(doc, node);
              break;
         }
@@ -65,8 +67,8 @@ static void parseit(xmlDocPtr doc, xmlNodePtr snap){
     while(snap != NULL){
         if (! xmlStrcmp(snap->name, (const xmlChar *)"TopGUID")) {
              top = xmlNodeListGetString(doc, snap->xmlChildrenNode, 1);
-             printf("top: %s\n", top);
-             //xmlFree(top);
+             
+             //printf("top: %s\n", top);
         }
 
         if (! xmlStrcmp(snap->name, (const xmlChar *)"Shot")) {
@@ -95,6 +97,10 @@ static void parseit(xmlDocPtr doc, xmlNodePtr snap){
                  //buildthe tree.
                  //typedef unsigned char xmlChar; in libxml source code.
                  insertlink((char *)xml_guid, (char *)xml_faguid);
+                 
+                 if(! strcmp((char *)xml_guid, (char *)top)){
+                     maketop((char *)xml_guid, (char *)xml_faguid); 
+                 }
              }
 
              /*
@@ -121,6 +127,11 @@ static void insertlink(char *guid, char *faguid){
     ShotCL shot = make_cl_node(guid, faguid);
     insert_cl_node(shot);
 }
+
+static void maketop(char *guid, char *faguid){
+    TOP = make_cl_node(guid, faguid);    
+}
+
 
 /*
 int main(int argc, char **argv){
