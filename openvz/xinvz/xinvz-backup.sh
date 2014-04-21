@@ -8,11 +8,13 @@
 CTID=""
 BKDIR=""
 BKFILE=""
+SNAPSHOTID=""
+FLAG=""
 
 usage(){
-    echo "display the usage."
     echo "$0 --command bk_full <--ctid id> <--bkdir dir>"
-    echo "$0 --command bk_rollback <--ctid id> <--bkdir dir> <--bkfile filename>" 
+    echo "$0 --command bk_increment <--ctid id> <--bkdir dir> <--bkfile file>"
+    echo "$0 --command bk_rollback <--ctid id> <--bkdir dir> <--bkfile filename> <--snapshotid id> [--flag force]" 
 }
 
 vzctlinfo(){
@@ -49,7 +51,8 @@ mktreact(){
     echo $bkfile > ${actfile}
 
 }
-vefrtreact{
+
+vefrtreact(){
     local bkdir=$1
     local bkfile=$2
     local actfile=${bkdir}/${bkfile}/Active
@@ -61,6 +64,15 @@ vefrtreact{
     fi
 
     return 1
+}
+
+havethesnap(){
+    local diskxml=$1
+    local snapid=$2
+  
+    ploop snapshot-list $1 -H -o uuid | grep $2 > /dev/null
+ 
+    return $?
 }
 
 bkfull(){
@@ -174,39 +186,70 @@ bkrollback(){
         exit 1
     fi
 
-    ctexist $CTID
+    #just line bkdir/bkfile
+    local vm_private_path=$(vzlist -H -o private $CTID)
+    local vm_snapdepend_file="${vm_private_path}/Snapshots.xml"
+    local vm_disk_dir="${vm_private_path}/root.hdd"
+    local vm_diskxml_file="${vm_disk_path/root.hdd/DiskDescriptor.xml}"
+    local bk_active_file="${BKDIR}/ACTIVE"
+    local bk_snapdepend_file="${BKDIR}/${BKFILE}/Snapshots.xml"
+    local bk_disk_dir="${BKDIR}/${BKFILE}/root.hdd"
+    local bk_diskxml_file="${bk_disk_dir}/DiskDescriptor.xml"
 
-    if [ ! -d ${BKDIR}/${BKFILE} ]; then
-        echo "ERROR"
-        echo "The Backup file is not exist."
+
+    local actre=`sed -n '1 p' ${bk_active_file}`
+    if [ "$actre" != "$BKFILE" ]; then
+        FLAG="force"
     fi
 
-    local private_path=$(vzlist -H -o private $CTID)
-    if [ ! -d ${private_path}/root.hdd/ ]; then
+    if [ ! -d ${bk_disk_dir} ]; then
+        echo "ERROR"
+        echo "The Backup file is not exist."
+        exit 1
+    fi
+
+    if [ ! -d ${vm_disk_dir} ]; then
         echo "ERROR"
         echo "The VM $CTID disk type is not ploop, we do not support other now."
         exit 1
     fi
 
+    ctexist $CTID
+
+    havethesnap ${bk_diskxml_file} $SNAPSHOTID
+    if [ "$?" -nq "0" ];then
+        echo "ERROR"
+        echo "The $CTID snapshotid $SNAPSHOTID is not in bkfile $BKFILE."
+        exit 1
+    fi
+
+
     #Begin to rollback.
-    SystemOnline $CTID
-    local vm_status=$?
+    if [ "$FLAG" == "force" ]; then
+        SystemOnline $CTID
+        local vm_status=$?
 
-    if [ "$vm_status" -eq 0 ]; then
-        vzctl stop $CTID > /dev/null 2>&1
+        if [ "$vm_status" -eq 0 ]; then
+            #vzctl stop $CTID > /dev/null 2>&1
+            echo "ERROR"
+            echo "The VM $CTID must SHUTDOWN when you restore on other tree or with force flag."
+            exit 1
+        fi
+
+        rm -rf ${vm_disk_dir}/*
+        rm -f ${vm_snapdepend_file}
+
+        cp -fp ${bk_disk_dir}/* ${vm_disk_dir}/
+        cp -fp ${bk_snapdepend_file} ${vm_snapdepend_file}
     fi
 
-    rm -rf ${private_path}/root.hdd/*
-    cp -fp ${BKDIR}/${BKFILE}/* ${private_path}/root.hdd/
-    
+    #delete by marsgu, the increacement disk  will be deleted when switch, vzctl delete will merge into the fater disk.
+    #local id=`CurSnapshotId $CTID`
+    #vzctl snapshot-delete $CTID --id $id > /dev/null 2>&1
+    #vzctlinfo $? "exit"
 
-    local id=`CurSnapshotId $CTID`
-    vzctl snapshot-delete $CTID --id $id > /dev/null 2>&1
-    vzctlinfo $? "exit"
-
-    if [ "$vm_status" -eq 0 ]; then
-        vzctl start $CTID > /dev/null 2>&1
-    fi
+    #really switch
+    vzctl snapshot-switch $CTID $SNAPSHOTID 
 
     echo "SUCCESS"    
 }
@@ -216,7 +259,7 @@ delete(){
 }
 
 
-TEMP=`getopt -o m:c:d:f --long command:,ctid:,bkdir:,bkfile: \
+TEMP=`getopt -o m:c:d:f:s:g --long command:,ctid:,bkdir:,bkfile:,snapshotid:,flag: \
      -n 'ERROR' -- "$@"`
 
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
@@ -229,6 +272,8 @@ while true ; do
                 -c|--ctid) CTID=$2; shift 2 ;;
                 -d|--bkdir) BKDIR=${2%/}; shift 2 ;;
                 -f|--bkfile) BKFILE=$2; shift 2 ;;
+                -s|--snapshotid) SNAPSHOTID=$2; shift 2 ;;
+                -g|--flag) FLAG=$2; shift 2 ;;
                 --) shift ; break ;;
                 *) echo "Unknow Option, verfiy your command" ; usage; exit 1 ;;
         esac

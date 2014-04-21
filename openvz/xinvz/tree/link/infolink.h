@@ -10,7 +10,7 @@ struct SnapShotCL{
     ShotCL next;
 };
 
-ShotCL TOP;
+ShotCL CL_TOP;
 
 extern ShotCL make_cl_node(char *guid, char *faguid);
 void free_cl_node(ShotCL shot);

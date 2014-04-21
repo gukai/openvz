@@ -129,7 +129,7 @@ static void insertlink(char *guid, char *faguid){
 }
 
 static void maketop(char *guid, char *faguid){
-    TOP = make_cl_node(guid, faguid);    
+    CL_TOP = make_cl_node(guid, faguid);    
 }
 
 
