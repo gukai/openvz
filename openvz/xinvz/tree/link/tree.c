@@ -4,8 +4,10 @@
 #include"tree.h"
 
 static void set_flag(ShotTree tmp);
+static int tree_which_child(ShotTree shot);
+static void tree_print_inactive(ShotTree shot);
 
-ShotTree Tree_Root = NULL;
+static ShotTree Tree_Root = NULL;
 
 ShotTree tree_make_node(char *name){
     ShotTree shot = (ShotTree)malloc(sizeof(struct SnapShotTree));
@@ -19,6 +21,10 @@ ShotTree tree_make_node(char *name){
     //shot->child = NULL;
  
     return shot;
+}
+
+void tree_init_tree(char *rootname){
+    Tree_Root = tree_make_node(rootname);
 }
 
 
@@ -63,6 +69,12 @@ void tree_delete_node(ShotTree tfather, ShotTree tchild){
 
 }
 
+int tree_is_empty(void){
+    if(Tree_Root == NULL)
+        return 1;
+    return 0;
+}
+
 //tmp must be Tree_Root.
 void tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree)){
     int i = 0;
@@ -79,6 +91,9 @@ void tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree)){
 ShotTree tree_search_node(ShotTree tmp, char *name){
     int i = 0;
     ShotTree ret = NULL;
+    if (tmp == NULL){
+          printf("it is should not happened!, tree root may be null.\n");
+    }
 
     for(i = 0; i < tmp->childnum; i++){
         ret = tree_search_node(tmp->child[i], name);
@@ -93,10 +108,14 @@ ShotTree tree_search_node(ShotTree tmp, char *name){
 
 }
 
+ShotTree tree_search_node_root(char *name){
+    return tree_search_node(Tree_Root, name);
+}
+
 
 //tmp must be Top ShotTree
 void tree_traverse_line(ShotTree tmp, void(*visit)(ShotTree)){
-    if(tmp->father == NULL)
+    if(tmp == NULL)
 	return ;
     tree_traverse_line(tmp->father, visit);
     visit(tmp);
@@ -116,11 +135,12 @@ void inactive_node_command(void (*visit)(ShotTree)){
 }
 
 
+
 /***********************************************
  litile tools
 ************************************************/
 // which child in father's child list.
-int tree_which_child(ShotTree shot){
+static int tree_which_child(ShotTree shot){
     int i = 0;
     for(i = 0 ; i < shot->father->childnum; i++){
        if(shot->father->child[i] == shot){
@@ -131,15 +151,16 @@ int tree_which_child(ShotTree shot){
     return -1;
 }
 
-void set_flag(ShotTree tmp){
+static void set_flag(ShotTree tmp){
     tmp->flag = FlagActive;
 }
 
-void tree_print_inactive(ShotTree shot){
+static void tree_print_inactive(ShotTree shot){
      if(shot->flag == FlagInActive){
           printf("%s, ", shot->name);
      }
 }
+
 
 /*
 int main(void){

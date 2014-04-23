@@ -3,6 +3,7 @@
 #include<string.h>
 #include"infolink.h"
 
+ShotCL CL_TOP = NULL;
 static ShotCL CLHead = NULL;
 
 ShotCL make_cl_node(char *guid, char *faguid){
@@ -19,6 +20,7 @@ void free_cl_node(ShotCL shot){
 }
 
 void print_cl_node(ShotCL shot){
+   if(shot == NULL) printf("the parameter value is NULL\n");;
    printf("guid: %s\n", shot->guid);
    printf("faguid %s\n", shot->faguid);
 }
@@ -72,6 +74,18 @@ void cl_traverse_link(void (*visit)(ShotCL)){
         visit(tmp);
     }
 }
+
+int cl_traverse_link_status(int (*visit)(ShotCL)){
+    int status = 0, ret = 0;
+    ShotCL tmp = CLHead;
+
+    for(status = 0; tmp; tmp = tmp->next){
+        status = visit(tmp);
+        if(1 == status) ret = 1;
+    }
+    return ret;
+}
+
 
 /*
 int main(void){

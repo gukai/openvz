@@ -17,17 +17,18 @@ enum NodeFlag{
 };
 
 
-extern ShotTree Tree_Root;
+//extern ShotTree Tree_Root;
 
 ShotTree tree_make_node(char *name);
+void tree_init_tree(char *rootname);
 void tree_free_node(ShotTree shot);
 void tree_add_child(ShotTree tfather, ShotTree tchild);
 void tree_delete_node(ShotTree tfather, ShotTree tchild);
+int tree_is_empty(void);
 void tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree));
 ShotTree tree_search_node(ShotTree shot, char *name);
+ShotTree tree_search_node_root(char *name);
 void tree_traverse_line(ShotTree tmp, void(*visit)(ShotTree));
 void tree_set_flag(char *topguid);
-int tree_which_child(ShotTree shot);
 void inactive_node_command(void (*visit)(ShotTree));
-void tree_print_inactive(ShotTree shot);
 #endif

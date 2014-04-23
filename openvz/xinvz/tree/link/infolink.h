@@ -10,9 +10,10 @@ struct SnapShotCL{
     ShotCL next;
 };
 
-ShotCL CL_TOP;
+extern ShotCL CL_TOP;
 
-extern ShotCL make_cl_node(char *guid, char *faguid);
+
+ShotCL make_cl_node(char *guid, char *faguid);
 void free_cl_node(ShotCL shot);
 void print_cl_node(ShotCL shot);
 void insert_cl_node(ShotCL shot);
@@ -21,6 +22,6 @@ ShotCL search_cl_node(char *guid);
 int cl_is_empty(void);
 void cl_destroy_link(void);
 void cl_traverse_link(void (*visit)(ShotCL));
-
+int cl_traverse_link_status(int (*visit)(ShotCL));
 
 #endif
