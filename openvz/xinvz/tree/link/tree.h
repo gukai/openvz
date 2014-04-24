@@ -29,6 +29,9 @@ void tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree));
 ShotTree tree_search_node(ShotTree shot, char *name);
 ShotTree tree_search_node_root(char *name);
 void tree_traverse_line(ShotTree tmp, void(*visit)(ShotTree));
+void pre_tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree));
 void tree_set_flag(char *topguid);
-void inactive_node_command(void (*visit)(ShotTree));
+void inactive_node_command_root(void (*visit)(ShotTree));
+void inactive_node_command(ShotTree myroot, void(*visit)(ShotTree));
+void active_node_command(ShotTree myroot, void (*visit)(ShotTree));
 #endif

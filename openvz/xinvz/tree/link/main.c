@@ -6,6 +6,23 @@
 #include "tree.h"
 //gcc -Wall infolink.c tree.c xml.c main.c -o 1 -I /usr/include/libxml2/ -lxml2
 
+enum command_enum{
+    BUILD,
+    DELETE,
+};
+
+void usage(void){
+    printf("./tree <build> <xmlfile>\n");
+    printf("    build: use this command when you want to build full backup\n");
+    printf("    xmlfile: the configure file of the VM private hdd.root.\n");
+    printf("    return: the list of uuid which snapshot must be delete before.\n");
+    printf("./tree <delete> <xmlfile> <uuid> [active].\n");
+    printf("    delete: use this command when you want to delete one snapshot point.\n");
+    printf("    xmlfile: the configure file of the VM private hdd.root\n");
+    printf("    uuid: the uuid which snapshot you want to delete.\n");
+    printf("    active: if the snapshot you want to delete in the active tree, call with the argv[4] \"active\". \n");
+}
+
 
 int move_linknode_to_tree(ShotCL shot){
     int score = 0;
@@ -49,21 +66,90 @@ void move_link_to_tree(void){
     }
 }
 
+void build_com(void){
+    tree_set_flag(CL_TOP->guid);
+    inactive_node_command_root(NULL); 
+}
+
+void delete_com(char *uuid, int flag){
+    ShotTree target = tree_search_node_root(uuid);    
+    if (target == NULL){
+        printf("ERROR: Could not find the uuid : %s in the back up.\n", uuid);
+        exit(1);
+    }
+
+    if(flag)
+        tree_set_flag(CL_TOP->guid);
+ 
+    inactive_node_command(target, NULL);
+    if(flag){
+        //printf("\n");
+        active_node_command(target, NULL);
+    }
+}
+
+
 int main(int argc, char **argv){
+    // the uuid must have {}.
+    char *comarg = NULL, *uuid = NULL, *xmlfile;
+    int active = 0;
+    enum command_enum com;
+
+
+    if(argc < 3){
+        printf("ERROR:Argument is too less.\n");
+        usage();
+        exit(1);
+    }
+
+    comarg = argv[1];
+    if(! strcmp(comarg, "build")){
+        com = BUILD;
+    }else if(! strcmp(comarg, "delete")){
+        if(argc<4){
+            printf("ERROR: you must specify the uuid which you want to delete.");
+            usage();
+            exit(1);
+        }
+        uuid = argv[3];
+        com = DELETE;
+        if(argc == 5 ){
+            if( strcmp(argv[4], "active")){
+                printf("ERROR: if the argc equal 5, the argv[4] is must be active now.");
+                usage();
+                exit(1);
+            }
+            active = 1;
+        }
+    }else{
+        printf("ERROR: The command is error, please verfiy your parameter.\n");
+        usage();
+        exit(1);
+    }
+
+    xmlfile = argv[2];
 
     // auto put the xml info into the link. 
-    putXMLInLink(argv[1]);
-    //putXMLInLink("DiskDescriptor.xml");
+    putXMLInLink(xmlfile);
     //cl_traverse_link(print_cl_node);
-
-    // get the top node.
-    //printf("next is top\n");
-    //print_cl_node(CL_TOP);
 
     move_link_to_tree();
 
-    tree_set_flag(CL_TOP->guid);
-    inactive_node_command(NULL);
+    switch (com){
+    case BUILD:
+        build_com();
+        break;
+    case DELETE:
+        delete_com(uuid, active);
+        break;
+    default:
+        usage();
+        exit(1);
+    }
+    
+    
+
+
 
 
 

@@ -6,6 +6,7 @@
 static void set_flag(ShotTree tmp);
 static int tree_which_child(ShotTree shot);
 static void tree_print_inactive(ShotTree shot);
+static void tree_print_active(ShotTree shot);
 
 static ShotTree Tree_Root = NULL;
 
@@ -83,7 +84,19 @@ void tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree)){
     }
     visit(tmp);
 
-    if(tmp->father == NULL) return;
+    //if(tmp->father == NULL) return;
+
+}
+
+//tmp must be Tree_Root.
+void pre_tree_traverse_tree(ShotTree tmp, void (*visit)(ShotTree)){
+    int i = 0;
+    visit(tmp);
+    for(i = 0; i < tmp->childnum; i++){
+        pre_tree_traverse_tree(tmp->child[i], visit);
+    }
+
+    //if(tmp->father == NULL) return;
 
 }
 
@@ -130,8 +143,16 @@ void tree_set_flag(char *topguid){
 }
 
 /**now visit is just tree_print_inactive.**/
-void inactive_node_command(void (*visit)(ShotTree)){
+void inactive_node_command_root(void (*visit)(ShotTree)){
     tree_traverse_tree(Tree_Root, tree_print_inactive);
+}
+
+void inactive_node_command(ShotTree myroot, void (*visit)(ShotTree)){
+    tree_traverse_tree(myroot, tree_print_inactive);
+}
+
+void active_node_command(ShotTree myroot, void (*visit)(ShotTree)){
+    pre_tree_traverse_tree(myroot, tree_print_active);
 }
 
 
@@ -157,7 +178,14 @@ static void set_flag(ShotTree tmp){
 
 static void tree_print_inactive(ShotTree shot){
      if(shot->flag == FlagInActive){
-          printf("%s, ", shot->name);
+          printf("%s ", shot->name);
+     }
+}
+
+static void tree_print_active(ShotTree shot){
+     if(shot->flag == FlagActive){
+          printf("%s ", shot->name);
+          //printf("%s\n", shot->name);
      }
 }
 

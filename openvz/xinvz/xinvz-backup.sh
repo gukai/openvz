@@ -1,6 +1,7 @@
 #!/bin/sh
 #Author: gukai(gukai@xinnet.com)
-#version 0.2
+#version 0.3: do it with the tree.
+#
 
 . ./xinvz-vzctlerr.sh
 . ./xinvz-lib.sh
@@ -15,6 +16,7 @@ usage(){
     echo "$0 --command bk_full <--ctid id> <--bkdir dir>"
     echo "$0 --command bk_increment <--ctid id> <--bkdir dir> <--bkfile file>"
     echo "$0 --command bk_rollback <--ctid id> <--bkdir dir> <--bkfile filename> <--snapshotid id> [--flag force]" 
+    echo "$0 --command delete <--ctid id> <--bkdir dir> <--bkfile filename> <--snapshotid id>" 
 }
 
 vzctlinfo(){
@@ -100,8 +102,15 @@ bkfull(){
         exit 1
     fi
 
+    #delete inactive snapshot first.
+    dellist=`./xmltree build ${private_path}/root.hdd/DiskDescriptor.xml`
+    for snaptmp in $dellist; do
+        //snapuuid=`echo $snaptmp | cut -d '{' -f 2 | cut -d '}' -f 1`
+        ploop snapshot-delete -u $snaptmp ${private_path}/root.hdd/DiskDescriptor.xml > /dev/null
+    done
+
     #Merge all snapshots down to base delta
-    ploop snapshot-merge -A ${private_path}/root.hdd/DiskDescriptor.xml
+    ploop snapshot-merge -A ${private_path}/root.hdd/DiskDescriptor.xml > /dev/null
     rm ${private_path}/Snapshots.xml 
 
     # Take a snapshot without suspending a CT and saving its config
@@ -179,7 +188,7 @@ bkincrement(){
 bkrollback(){
 
     #test before rollback.
-    local paralist="CTID BKDIR BKFILE"
+    local paralist="CTID BKDIR BKFILE SNAPSHOTID"
     if ! ret=`VerfiyParameter "$paralist"`; then
         echo "ERROR"
         echo "Parameter $ret is not set."
@@ -249,13 +258,69 @@ bkrollback(){
     #vzctlinfo $? "exit"
 
     #really switch
-    vzctl snapshot-switch $CTID $SNAPSHOTID 
+    #vzctl snapshot-switch $CTID $SNAPSHOTID 
+    ploop snapshot-switch -u "{$SNAPSHOTID}" vm_diskxml_file
 
     echo "SUCCESS"    
 }
 
 delete(){
-   echo "delete the special bakcup."
+    local paralist="CTID BKDIR BKFILE SNAPSHOTID"
+    if ! ret=`VerfiyParameter "$paralist"`; then
+        echo "ERROR"
+        echo "Parameter $ret is not set."
+        exit 1
+    fi
+
+    #just line bkdir/bkfile
+    local vm_private_path=$(vzlist -H -o private $CTID)
+    local vm_snapdepend_file="${vm_private_path}/Snapshots.xml"
+    local vm_disk_dir="${vm_private_path}/root.hdd"
+    local vm_diskxml_file="${vm_disk_path/root.hdd/DiskDescriptor.xml}"
+    local bk_active_file="${BKDIR}/ACTIVE"
+    local bk_snapdepend_file="${BKDIR}/${BKFILE}/Snapshots.xml"
+    local bk_disk_dir="${BKDIR}/${BKFILE}/root.hdd"
+    local bk_diskxml_file="${bk_disk_dir}/DiskDescriptor.xml"
+    local status=""
+
+    local actre=`sed -n '1 p' ${bk_active_file}`
+    if [ "$actre" != "$BKFILE" ]; then
+        status="active"
+    fi
+
+    if [ ! -d ${bk_disk_dir} ]; then
+        echo "ERROR"
+        echo "The Backup file is not exist."
+        exit 1
+    fi
+
+    if [ ! -d ${vm_disk_dir} ]; then
+        echo "ERROR"
+        echo "The VM $CTID disk type is not ploop, we do not support other now."
+        exit 1
+    fi
+
+    ctexist $CTID
+
+    #do the real job.
+    if [ "$status" == "active" ]; then
+       dellist=`./xmltree delete $[bk_diskxml_file} ${SNAPSHOTID} active'`
+       dellist=${dellist%{*} 
+       for snaptmp in $dellist; do
+           ploop snapshot-delete -u $snaptmp $[bk_diskxml_file} > /dev/null
+           ploop snapshot-delete -u $snaptmp $[vm_diskxml_file} > /dev/null
+       done
+ 
+    elif [ -z "$status" ]; then
+       dellist=`./xmltree delete $[bk_diskxml_file} ${SNAPSHOTID}`
+       for snaptmp in $dellist; do
+           ploop snapshot-delete -u $snaptmp $[bk_diskxml_file} > /dev/null
+       done 
+    else
+        echo "ERROR"
+        echo "some thing error when get the tree status"
+    fi
+
 }
 
 
