@@ -134,9 +134,10 @@ bkfull(){
 
     mktreact $BKDIR $bkfile
 
-    echo "SUCCESS"
-    echo "id: $id"
-    echo "bkfile: $bkfile"
+    #echo "SUCCESS"
+    #echo "id: $id"
+    #echo "bkfile: $bkfile"
+    echo "SUCCESS,$bkfile,$id"
 }
 
 bkincrement(){
@@ -191,8 +192,7 @@ bkincrement(){
     local topdisk=`ploop snapshot-list -H -o current,fname ${private_path}/root.hdd/DiskDescriptor.xml | grep '*' | cut -d' ' -f 2`
     cp -fp $topdisk ${bkpath}/root.hdd/
 
-    echo "SUCCESS"
-    echo "id $id"    
+    echo "SUCCESS,$id"
 }
 
 bkrollback(){
