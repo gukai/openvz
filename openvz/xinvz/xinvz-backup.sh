@@ -311,7 +311,7 @@ delete(){
     local status=""
 
     local actre=`sed -n '1 p' ${bk_active_file}`
-    if [ "$actre" != "$BKFILE" ]; then
+    if [ "$actre" == "$BKFILE" ]; then
         status="active"
     fi
 
