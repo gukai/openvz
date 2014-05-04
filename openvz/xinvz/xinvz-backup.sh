@@ -285,6 +285,9 @@ bkrollback(){
     cp -fp ${vm_snapdepend_file} ${bk_snapdepend_file}
     cp -fp ${vm_diskxml_file} ${bk_diskxml_file}
 
+    #2014-5-4 Mars Gu, must set the tree active which your rollback.
+    mktreact $BKDIR $BKFILE
+
     echo "SUCCESS"    
 }
 
