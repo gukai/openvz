@@ -331,7 +331,7 @@ delete(){
 
     #do the real job.
     if [ "$status" == "active" ]; then
-       dellist=`./xmltree delete ${bk_diskxml_file} "{${SNAPSHOTID}}" active'`
+       dellist=`./xmltree delete ${bk_diskxml_file} "{${SNAPSHOTID}}" active`
        if [ "$?" -ne 0 ]; then
            echo "ERROR"
            echo $dellist
